@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
@@ -18,7 +18,7 @@ y = df['Task Type']
 # Encode the features (task descriptions)
 preprocessor = ColumnTransformer(
     transformers=[
-        ('text', OneHotEncoder(), ['Process'])
+        ('text', OneHotEncoder(handle_unknown='ignore'), ['Process'])
     ],
     remainder='passthrough'
 )
@@ -33,18 +33,18 @@ y_transformed = label_encoder.fit_transform(y)
 X_train, X_test, y_train, y_test = train_test_split(X_transformed, y_transformed, test_size=0.2, random_state=42)
 
 # Set up the model with class weights
-model = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
+model = RandomForestClassifier(n_estimators=100, random_state=42)
 
-# Hyperparameter tuning
-param_grid = {
-    'max_depth': [None, 10, 20, 30],
-    'min_samples_split': [2, 5, 10],
+# Randomized search for hyperparameters
+param_distributions = {
+    'max_depth': [None, 10, 20, 30, 40, 50],
+    'min_samples_split': [2, 5, 10, 20],
 }
-grid_search = GridSearchCV(model, param_grid, cv=3, scoring='accuracy')
-grid_search.fit(X_train, y_train)
+randomized_search = RandomizedSearchCV(model, param_distributions, n_iter=10, cv=3, scoring='accuracy', random_state=42)
+randomized_search.fit(X_train, y_train)
 
 # Best model
-best_model = grid_search.best_estimator_
+best_model = randomized_search.best_estimator_
 
 # Evaluate the Model
 y_pred = best_model.predict(X_test)
@@ -92,6 +92,7 @@ def predict_task_type(process_description):
     return predicted_label[0]
 
 # Example usage
-new_process_description = 'Fix slow checkout process'
-predicted_task_type = predict_task_type(new_process_description)
-print(f'Process: {new_process_description}\nPredicted Task Type: {predicted_task_type}')
+if __name__ == "__main__":
+    new_process_description = input("Enter a process description: ")
+    predicted_task_type = predict_task_type(new_process_description)
+    print(f'Process: {new_process_description}\nPredicted Task Type: {predicted_task_type}')
